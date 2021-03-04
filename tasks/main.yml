@@ -1,0 +1,57 @@
+---
+
+- name: include host specific variables
+  ansible.builtin.include_vars: "{{ ansible_os_family }}.yml"
+
+- name: install packages
+  ansible.builtin.apt:
+    name:
+      - logrotate
+    state: present
+    update_cache: true
+    cache_valid_time: 86400
+    install_recommends: false
+
+- name: find ansible managed configs
+  ansible.builtin.find:
+    paths: /etc/logrotate.d
+    patterns: "ansible-logrotate-*"
+  register: _current_logrotate_configs
+
+- name: cleanup old ansible managed configs
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ _current_logrotate_configs.files }}"
+  loop_control:
+    label: "{{ item.path }}"
+  when:
+    - item.path | basename | regex_replace("ansible-logrotate-", "") not in
+        (logrotate_configs | default([]) | map(attribute="name") | list)
+
+- name: override rsyslog config
+  ansible.builtin.template:
+    src: logrotate.d.j2
+    dest: "/etc/logrotate.d/{{ logrotate_rsyslog_config_name }}"
+    owner: root
+    group: root
+    mode: 0644
+  vars:
+    item: "{{ logrotate_configs_rsyslog }}"
+  when:
+    - logrotate_rsyslog is defined
+    - logrotate_rsyslog | bool
+
+- name: install configs
+  ansible.builtin.template:
+    src: logrotate.d.j2
+    dest: "/etc/logrotate.d/ansible-logrotate-{{ item.name }}"
+    owner: root
+    group: root
+    mode: 0644
+  loop: "{{ logrotate_configs }}"
+  loop_control:
+    label: "/etc/logrotate.d/ansible-logrotate-{{ item.name }}"
+  when:
+    - logrotate_configs is defined
+    - logrotate_configs | bool

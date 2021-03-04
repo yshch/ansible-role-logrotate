@@ -1,0 +1,4 @@
+---
+
+logrotate_rsyslog: {}
+logrotate_configs: []

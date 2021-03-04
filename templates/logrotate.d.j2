@@ -1,0 +1,17 @@
+#jinja2: trim_blocks:True, lstrip_blocks:True
+{{ ansible_managed | comment }}
+{% for job in item.jobs %}
+{% for path in job.paths %}
+{{ path }}
+{% endfor %}
+{
+	{% for option in job.options %}
+	{{ option }}
+	{% endfor %}
+	{% for name, script in job.scripts.items() %}
+	{{ name }}
+		{{ script }}
+	endscript
+	{% endfor %}
+}
+{% endfor %}
